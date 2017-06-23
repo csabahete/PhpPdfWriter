@@ -50,15 +50,27 @@ class PdfWriter extends FPDF
 
     /**
      * PdfDocumentWriter constructor.
-     * @param string $printData
-     * @param string $orientation
-     * @param string $unit
-     * @param string $size
+     * @param array $printData
+     * @param string $orientation Default page orientation. Possible values are (case insensitive):
+     *                            P or Portrait,
+     *                            L or Landscape.
+     *                            Default value is P.
+     * @param string $unit User unit. Possible values are:
+     *                         pt: point,
+     *                         mm: millimeter,
+     *                         cm: centimeter,
+     *                         in: inch.
+     *                     A point equals 1/72 of inch, that is to say about 0.35 mm (an inch being 2.54 cm).
+     *                     This is a very common unit in typography; font sizes are expressed in that unit.
+     *                     Default value is mm.
+     * @param string $size The size used for pages. It can be either one of the following values (case insensitive):
+     *                     A3, A4, A5, Letter, Legal, or an array containing the width and the height
+     *                     (expressed in the unit given by unit). Default value is A4.
      */
     public function __construct($printData, $orientation = 'P', $unit = 'mm', $size = 'A4')
     {
         parent::__construct($orientation, $unit, $size);
-        $this->fontpath = ('fonts' . DIRECTORY_SEPARATOR);
+        $this->fontpath = dirname(__FILE__) . '/fonts' . DIRECTORY_SEPARATOR;
         $this->AddFont(self::DEFAULT_FONT_FAMILY, '', 'arial.php');
         $this->AddFont(self::DEFAULT_FONT_FAMILY, 'B', 'arialbd.php');
         $this->resetFont();
@@ -183,12 +195,12 @@ class PdfWriter extends FPDF
         $this->SetTextColor(150);
         $this->SetFont(self::DEFAULT_FONT_FAMILY, '', self::DEFAULT_FONT_SIZE);
 
-        for ($i = $this->tMargin; $i < $this->getBBorder(); $i += $step) {
+        for ($i = $this->tMargin; $i + $step < $this->getBBorder(); $i += $step) {
             $this->Line($this->lMargin, $i, $this->getRBorder(), $i);
             $x = 0;
             $y = (int)$i;
-            $this->SetXY(0, $y);
-            $this->Cell(0, $step, "($x, $y)", 0, "L", 2);
+            $this->SetXY($this->lMargin, $y);
+            $this->Cell($this->lMargin, $step, "($x, $y)", 0, "L", 2);
         }
 
         $this->SetDrawColor(0);
@@ -198,13 +210,43 @@ class PdfWriter extends FPDF
     public function Footer()
     {
         if (!empty($this->footer)) {
+            $this->SetXY($this->getLMargin(), $this->getBBorder());
             $this->footer->createFooter($this, $this->printData);
         }
     }
 
+    /**
+     * Creates a cell and writes the given text into it. If the text doesn't fits, then an ellipsis effect will be applied
+     *
+     * @param int $w Cell width. If 0, the cell extends up to the right margin.
+     * @param int $h Cell height. Default value: 0
+     * @param string $txt String to print. Default value: empty string.
+     * @param int $border Indicates if borders must be drawn around the cell. The value can be either a number:
+     *                      0: no border,
+     *                      1: frame,
+     *                    or a string containing some or all of the following characters in any order:
+     *                      L: left,
+     *                      T: top,
+     *                      R: right,
+     *                      B: bottom.
+     *                    Default value: 0.
+     * @param int $ln Indicates where the current position should go after the call. Possible values are:
+     *                0: to the right,
+     *                1: to the beginning of the next line,
+     *                2: below.
+     *                Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value: 0.
+     * @param string $align Allows to center or align the text. Possible values are:
+     *                      L or empty string: left align (default value),
+     *                      C: center,
+     *                      R: right align
+     * @param bool $fill Indicates if the cell background must be painted (true) or transparent (false).
+     *                   Default value: false.
+     * @param string $link URL or identifier returned by AddLink().
+     */
     public function fitCell($w, $h = 0, $txt = '', $border = 0, $ln = 0, $align = '', $fill = false, $link = '')
     {
-        //        $border = 1;
+        $h = $h?:self::DEFAULT_LINE_HEIGHT;
+
         $txt = $this->encodeString($txt);
         if (!empty($txt) && $txt != "") {
             $txt = $this->ellipsis($w, $txt);
@@ -238,6 +280,30 @@ class PdfWriter extends FPDF
         return $txt;
     }
 
+    /**
+     * Creates a cell and writes the given text into it. If the text doesn't fits, then line breaks will be applied at
+     * the end of the row (or at the given width).
+     *
+     * @param int $w Cell width. If 0, the cell extends up to the right margin.
+     * @param int $h Cell height. Default value: 0
+     * @param string $txt String to print. Default value: empty string.
+     * @param int $border Indicates if borders must be drawn around the cell. The value can be either a number:
+     *                      0: no border,
+     *                      1: frame,
+     *                    or a string containing some or all of the following characters in any order:
+     *                      L: left,
+     *                      T: top,
+     *                      R: right,
+     *                      B: bottom.
+     *                    Default value: 0.
+     * @param string $align Allows to center or align the text. Possible values are:
+     *                      L or empty string: left align (default value),
+     *                      C: center,
+     *                      R: right align,
+     *                      J: justification (default value)
+     * @param bool $fill Indicates if the cell background must be painted (true) or transparent (false).
+     *                   Default value: false.
+     */
     public function MultiCell($w, $h, $txt, $border = 0, $align = 'J', $fill = false)
     {
         $txt = $this->encodeString($txt);

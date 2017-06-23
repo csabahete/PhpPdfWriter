@@ -17,7 +17,8 @@
     },
     "autoload": {
         "psr-4": {
-            "PdfWriter\\": "src/"
+            "PdfWriter\\": "src/",
+            "PdfWriter\\Samples\\": "samples/"
         }
     }
 }
